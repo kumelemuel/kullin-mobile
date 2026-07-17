@@ -1,0 +1,55 @@
+schema: spec-driven
+
+context: |
+  # Kullin Mobile - Offline-First React Native App
+
+  ## Tech Stack
+  - Expo SDK 57 (managed workflow)
+  - React Native 0.86, React 19, TypeScript 6 (strict)
+  - Realm Database (v20+) for local persistence
+  - Zustand for UI state management
+  - Axios for API calls with JWT interceptor
+  - Expo Router for navigation
+  - EAS Build for CI/CD
+
+  ## Architecture Principles
+  - **Offline-first**: All writes go through Realm + pending operation queue; UI updates optimistically
+  - **Sync engine**: Health check `GET /api/health` → if 200, process queue sequentially with exponential backoff (1s, 2s, 4s... max 30s, max 3 retries)
+  - **No authentication screens**: First run shows config screen (URL, port, token) → validates via health check → persists in Realm + Zustand
+  - **Single source of truth**: Specs drive implementation; code follows spec
+
+  ## Key Directories
+  - `src/core/` - API client, network monitor, health check
+  - `src/db/` - Realm config, models, repositories
+  - `src/features/` - Domain features (api-config, sync, + future entities)
+  - `src/services/` - queue.service.ts, sync.service.ts
+  - `app/` - Expo Router pages (tabs: Home, Sync)
+
+  ## Quality Gates
+  - `npm run typecheck` (TypeScript strict)
+  - `npm run lint` (ESLint + Prettier)
+  - `npm run test` (Jest + React Native Testing Library)
+
+  ## Conventions
+  - Conventional Commits (feat:, fix:, chore:)
+  - Path aliases: @/*, @core/*, @db/*, @features/*, @services/*
+  - Realm models use PascalCase, properties camelCase
+  - Queue operations: create/update/delete with entityType + entityId
+
+rules:
+  proposal:
+    - Keep proposals under 500 words
+    - Always include "Non-goals" section
+    - Reference existing specs in openspec/specs/
+  design:
+    - Include data model changes (Realm schema updates)
+    - Specify queue operation types for new entities
+    - Define sync priority and conflict strategy
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Each task should be verifiable (test or manual check)
+    - Mark tasks that require backend changes
+  apply:
+    - Follow existing code patterns in src/
+    - Update living specs in openspec/specs/ after implementation
+    - Run typecheck + lint before marking tasks complete

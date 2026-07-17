@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kullin.mobile",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch"],
+        "UIBackgroundModes": [
+          "fetch"
+        ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
@@ -31,7 +33,8 @@
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
       ]
     },
     "web": {
@@ -47,11 +50,12 @@
         }
       ]
     ],
+    "owner": "kumelemuel",
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "f47002bb-218a-4dd5-b9d9-75f6dfacc197"
       }
-    },
-    "owner": "your-expo-username"
+    }
   }
 }
