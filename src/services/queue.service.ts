@@ -1,3 +1,4 @@
+import Realm from 'realm';
 import { getRealm, writeRealm } from '@/db/realm';
 import { PendingOperation, OperationType, OperationStatus } from '@/db/models/PendingOperation';
 
@@ -5,7 +6,7 @@ export interface QueuedOperation {
   _id: string;
   type: OperationType;
   endpoint: string;
-  payload: any; // parsed JSON
+  payload: any;
   timestamp: number;
   retries: number;
   status: OperationStatus;
@@ -23,24 +24,26 @@ export interface QueueOperation {
 }
 
 export class QueueService {
-  private realm = getRealm();
+  private get realm(): Realm {
+    return getRealm();
+  }
 
   enqueue(operation: QueueOperation): string {
-    const id = writeRealm((realm) => {
+    return writeRealm(realm => {
       const pendingOp = realm.create<PendingOperation>('PendingOperation', {
-        _id: new realm.BSON.ObjectId(),
+        _id: new Realm.BSON.ObjectId(),
         type: operation.type,
         endpoint: operation.endpoint,
         payload: JSON.stringify(operation.payload),
+        entityType: operation.entityType,
+        entityId: operation.entityId,
         timestamp: Date.now(),
         retries: 0,
         status: OperationStatus.PENDING,
-        entityType: operation.entityType,
-        entityId: operation.entityId,
+        lastError: '',
       });
       return pendingOp._id.toHexString();
     });
-    return id!;
   }
 
   getPending(): QueuedOperation[] {
@@ -72,8 +75,11 @@ export class QueueService {
   }
 
   markSyncing(id: string): void {
-    writeRealm((realm) => {
-      const obj = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', new realm.BSON.ObjectId(id));
+    writeRealm(realm => {
+      const obj = realm.objectForPrimaryKey<PendingOperation>(
+        'PendingOperation',
+        new Realm.BSON.ObjectId(id)
+      );
       if (obj) {
         obj.status = OperationStatus.SYNCING;
       }
@@ -81,8 +87,11 @@ export class QueueService {
   }
 
   markSynced(id: string): void {
-    writeRealm((realm) => {
-      const obj = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', new realm.BSON.ObjectId(id));
+    writeRealm(realm => {
+      const obj = realm.objectForPrimaryKey<PendingOperation>(
+        'PendingOperation',
+        new Realm.BSON.ObjectId(id)
+      );
       if (obj) {
         obj.status = OperationStatus.SYNCED;
       }
@@ -90,8 +99,11 @@ export class QueueService {
   }
 
   markFailed(id: string, error: string): void {
-    writeRealm((realm) => {
-      const obj = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', new realm.BSON.ObjectId(id));
+    writeRealm(realm => {
+      const obj = realm.objectForPrimaryKey<PendingOperation>(
+        'PendingOperation',
+        new Realm.BSON.ObjectId(id)
+      );
       if (obj) {
         obj.status = OperationStatus.FAILED;
         obj.lastError = error;
@@ -100,8 +112,11 @@ export class QueueService {
   }
 
   incrementRetries(id: string, error: string): void {
-    writeRealm((realm) => {
-      const obj = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', new realm.BSON.ObjectId(id));
+    writeRealm(realm => {
+      const obj = realm.objectForPrimaryKey<PendingOperation>(
+        'PendingOperation',
+        new Realm.BSON.ObjectId(id)
+      );
       if (obj) {
         obj.retries += 1;
         obj.lastError = error;
@@ -111,7 +126,7 @@ export class QueueService {
   }
 
   deleteSynced(): number {
-    return writeRealm((realm) => {
+    return writeRealm(realm => {
       const synced = realm
         .objects<PendingOperation>('PendingOperation')
         .filtered('status == $0', OperationStatus.SYNCED);
@@ -122,10 +137,20 @@ export class QueueService {
   }
 
   clearAll(): void {
-    writeRealm((realm) => {
+    writeRealm(realm => {
       const all = realm.objects<PendingOperation>('PendingOperation');
       realm.delete(all);
     });
+  }
+
+  subscribeToPending(callback: (operations: QueuedOperation[]) => void): () => void {
+    const collection = this.realm
+      .objects<PendingOperation>('PendingOperation')
+      .filtered('status == $0', OperationStatus.PENDING);
+    const listener = () => callback(Array.from(collection).map(this.mapOperation));
+    collection.addListener(listener);
+    listener();
+    return () => collection.removeListener(listener);
   }
 
   private mapOperation(op: PendingOperation): QueuedOperation {

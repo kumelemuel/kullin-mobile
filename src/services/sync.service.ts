@@ -2,6 +2,9 @@ import { apiClient } from '@/core/api/client';
 import { queueService, QueueOperation } from '@/services/queue.service';
 import { checkHealth, getNetworkStatus } from '@/core/network/networkMonitor';
 
+const setTimeoutPromise = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
 const MAX_RETRIES = 3;
 const BASE_DELAY = 1000;
 const MAX_DELAY = 30000;
@@ -48,13 +51,13 @@ export class SyncService {
     this.listeners.push(listener);
     listener(this.currentStatus);
     return () => {
-      this.listeners = this.listeners.filter((l) => l !== listener);
+      this.listeners = this.listeners.filter(l => l !== listener);
     };
   }
 
   private notify(status: Partial<SyncStatus>): void {
     this.currentStatus = { ...this.currentStatus, ...status };
-    this.listeners.forEach((listener) => listener(this.currentStatus));
+    this.listeners.forEach(listener => listener(this.currentStatus));
   }
 
   async processQueue(): Promise<SyncResult> {
@@ -102,7 +105,7 @@ export class SyncService {
           failed++;
         } else {
           queueService.incrementRetries(operation._id, errorMessage);
-          await new Promise((resolve) => setTimeout(resolve, calculateBackoff(operation.retries)));
+          await setTimeoutPromise(calculateBackoff(operation.retries));
         }
       }
 
@@ -121,11 +124,20 @@ export class SyncService {
       queueService.deleteSynced();
     }
 
-    return { success: failed === 0, synced, failed, error: failed > 0 ? 'Some operations failed' : null };
+    return {
+      success: failed === 0,
+      synced,
+      failed,
+      error: failed > 0 ? 'Some operations failed' : null,
+    };
   }
 
   async triggerSync(): Promise<SyncResult> {
     return this.processQueue();
+  }
+
+  getPendingCount(): number {
+    return queueService.getPendingCount();
   }
 }
 

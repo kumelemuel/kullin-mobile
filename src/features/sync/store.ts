@@ -11,13 +11,13 @@ interface SyncState {
   setError: (error: string | null) => void;
 }
 
-export const useSyncStore = create<SyncState>((set) => ({
+export const useSyncStore = create<SyncState>(set => ({
   pendingCount: 0,
   lastSync: null,
   isSyncing: false,
   error: null,
-  setPendingCount: (count) => set({ pendingCount: count }),
-  setLastSync: (date) => set({ lastSync: date }),
-  setSyncing: (syncing) => set({ isSyncing: syncing }),
-  setError: (error) => set({ error }),
+  setPendingCount: count => set({ pendingCount: count }),
+  setLastSync: date => set({ lastSync: date }),
+  setSyncing: syncing => set({ isSyncing: syncing }),
+  setError: error => set({ error }),
 }));

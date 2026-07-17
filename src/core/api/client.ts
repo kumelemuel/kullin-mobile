@@ -1,12 +1,12 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { apiConfigStore } from '@/features/api-config/store';
+import { useApiConfigStore } from '@/features/api-config/store';
 
 let apiClientInstance: AxiosInstance | null = null;
 
-export function getApiClient(): AxiosInstance {
+function getApiClient(): AxiosInstance {
   if (!apiClientInstance) {
-    const config = apiConfigStore.getState();
-    const baseURL = `http://${config.url}:${config.port}`;
+    const config = useApiConfigStore.getState().config;
+    const baseURL = config ? `http://${config.url}:${config.port}` : '';
 
     apiClientInstance = axios.create({
       baseURL,
@@ -18,26 +18,33 @@ export function getApiClient(): AxiosInstance {
 
     apiClientInstance.interceptors.request.use(
       (request: InternalAxiosRequestConfig) => {
-        const token = apiConfigStore.getState().token;
+        const token = useApiConfigStore.getState().config?.token;
         if (token && request.headers) {
           request.headers.Authorization = `Bearer ${token}`;
         }
         return request;
       },
-      (error) => Promise.reject(error)
+      error => Promise.reject(error)
     );
 
     apiClientInstance.interceptors.response.use(
-      (response) => response,
+      response => response,
       (error: AxiosError) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
-          // Token invalid/expired - clear config and trigger re-configuration
-          apiConfigStore.getState().clearConfig();
+          useApiConfigStore.getState().clearConfig();
         }
         return Promise.reject(error);
       }
     );
   }
+
+  const config = useApiConfigStore.getState().config;
+  const newBaseURL = config ? `http://${config.url}:${config.port}` : '';
+  if (apiClientInstance && apiClientInstance.defaults.baseURL !== newBaseURL) {
+    apiClientInstance = null;
+    return getApiClient();
+  }
+
   return apiClientInstance;
 }
 

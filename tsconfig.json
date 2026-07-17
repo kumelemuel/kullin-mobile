@@ -13,6 +13,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
@@ -22,7 +23,8 @@
       "@hooks/*": ["src/hooks/*"],
       "@services/*": ["src/services/*"],
       "@utils/*": ["src/utils/*"]
-    }
+    },
+    "types": ["jest", "@testing-library/jest-native"]
   },
   "include": ["src/**/*", "app/**/*", "*.config.*"],
   "exclude": ["node_modules", "dist", ".expo"]

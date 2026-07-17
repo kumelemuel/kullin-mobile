@@ -66,13 +66,15 @@ export function ApiConfigScreen() {
         setError(`Health check falló: ${response.status} ${response.statusText}`);
         return false;
       }
-    } catch (err: any) {
-      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-        setError('Timeout: No se pudo conectar al servidor (5s)');
-      } else if (err.message?.includes('Network request failed')) {
-        setError('Error de red: Verifica la URL y que el servidor esté accesible');
-      } else {
-        setError(`Error: ${err.message || 'Desconocido'}`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+          setError('Timeout: No se pudo conectar al servidor (5s)');
+        } else if (err.message?.includes('Network request failed')) {
+          setError('Error de red: Verifica la URL y que el servidor esté accesible');
+        } else {
+          setError(`Error: ${err.message || 'Desconocido'}`);
+        }
       }
       return false;
     } finally {
@@ -86,7 +88,11 @@ export function ApiConfigScreen() {
     const success = await testConnection();
     if (!success) return;
 
-    await setConfig(url.trim(), parseInt(port.trim(), 10), token.trim());
+    await setConfig({
+      url: url.trim(),
+      port: parseInt(port.trim(), 10),
+      token: token.trim(),
+    });
   };
 
   if (isConfigured) {
@@ -102,9 +108,7 @@ export function ApiConfigScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Configuración Inicial</Text>
-          <Text style={styles.subtitle}>
-            Ingresa la información de la API para continuar
-          </Text>
+          <Text style={styles.subtitle}>Ingresa la información de la API para continuar</Text>
         </View>
 
         <View style={styles.form}>
@@ -117,7 +121,7 @@ export function ApiConfigScreen() {
               placeholder="https://api.ejemplo.com"
               autoCapitalize="none"
               keyboardType="url"
-              autoCompleteType="off"
+              autoComplete="off"
             />
           </View>
 
@@ -140,18 +144,20 @@ export function ApiConfigScreen() {
               onChangeText={setToken}
               placeholder="Bearer token..."
               secureTextEntry
-              autoCompleteType="off"
+              autoComplete="off"
             />
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <Button
-            title={testing ? 'Probando conexión...' : 'Guardar y Probar Conexión'}
-            onPress={handleSave}
-            disabled={testing}
-            style={styles.button}
-          />
+          <View style={styles.button}>
+            <Button
+              title={testing ? 'Probando conexión...' : 'Guardar y Probar Conexión'}
+              onPress={handleSave}
+              disabled={testing}
+              color="#007AFF"
+            />
+          </View>
 
           {testing && <ActivityIndicator style={styles.spinner} size="large" />}
         </View>
@@ -215,6 +221,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 8,
+    width: '100%',
   },
   spinner: {
     marginTop: 16,

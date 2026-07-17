@@ -1,8 +1,11 @@
+import Realm from 'realm';
+import { PendingOperation, OperationStatus } from '../models/PendingOperation';
 import { getRealm, writeRealm } from '../realm';
-import { PendingOperation, OperationType, OperationStatus } from '../models/PendingOperation';
 
 export class PendingOperationRepository {
-  private realm = getRealm();
+  private get realm(): Realm {
+    return getRealm();
+  }
 
   getAllPending(): PendingOperation[] {
     return Array.from(
@@ -33,7 +36,7 @@ export class PendingOperationRepository {
   }
 
   create(operation: Omit<PendingOperation, '_id'>): PendingOperation {
-    return writeRealm((realm) => {
+    return writeRealm((realm: Realm) => {
       return realm.create<PendingOperation>('PendingOperation', {
         _id: new Realm.BSON.ObjectId(),
         ...operation,
@@ -45,7 +48,7 @@ export class PendingOperationRepository {
   }
 
   updateStatus(id: Realm.BSON.ObjectId, status: OperationStatus, error?: string): void {
-    writeRealm((realm) => {
+    writeRealm((realm: Realm) => {
       const op = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', id);
       if (op) {
         op.status = status;
@@ -56,7 +59,7 @@ export class PendingOperationRepository {
   }
 
   incrementRetries(id: Realm.BSON.ObjectId, error: string): void {
-    writeRealm((realm) => {
+    writeRealm((realm: Realm) => {
       const op = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', id);
       if (op) {
         op.retries += 1;
@@ -67,7 +70,7 @@ export class PendingOperationRepository {
   }
 
   markSynced(id: Realm.BSON.ObjectId): void {
-    writeRealm((realm) => {
+    writeRealm((realm: Realm) => {
       const op = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', id);
       if (op) {
         op.status = OperationStatus.SYNCED;
@@ -76,7 +79,7 @@ export class PendingOperationRepository {
   }
 
   markFailed(id: Realm.BSON.ObjectId, error: string): void {
-    writeRealm((realm) => {
+    writeRealm((realm: Realm) => {
       const op = realm.objectForPrimaryKey<PendingOperation>('PendingOperation', id);
       if (op) {
         op.status = OperationStatus.FAILED;
@@ -87,8 +90,10 @@ export class PendingOperationRepository {
 
   deleteSynced(): number {
     let count = 0;
-    writeRealm((realm) => {
-      const synced = realm.objects<PendingOperation>('PendingOperation').filtered('status == $0', OperationStatus.SYNCED);
+    writeRealm((realm: Realm) => {
+      const synced = realm
+        .objects<PendingOperation>('PendingOperation')
+        .filtered('status == $0', OperationStatus.SYNCED);
       count = synced.length;
       realm.delete(synced);
     });
@@ -101,7 +106,7 @@ export class PendingOperationRepository {
       .filtered('status == $0', OperationStatus.PENDING);
     const listener = () => callback(Array.from(collection));
     collection.addListener(listener);
-    listener(); // initial
+    listener();
     return () => collection.removeListener(listener);
   }
 }

@@ -13,12 +13,12 @@ export function subscribeNetwork(listener: (online: boolean) => void): () => voi
   listeners.push(listener);
   listener(isOnline);
   return () => {
-    listeners = listeners.filter((l) => l !== listener);
+    listeners = listeners.filter(l => l !== listener);
   };
 }
 
 function notifyListeners(): void {
-  listeners.forEach((listener) => listener(isOnline));
+  listeners.forEach(listener => listener(isOnline));
 }
 
 export function initNetworkMonitor(): void {

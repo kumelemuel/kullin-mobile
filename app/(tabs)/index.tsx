@@ -11,7 +11,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   React.useEffect(() => {
-    const unsubscribe = syncService.subscribe((status) => {
+    const unsubscribe = syncService.subscribe(status => {
       setPendingCount(status.pendingCount);
       setSyncing(status.isSyncing);
       if (status.lastSync) {
@@ -19,7 +19,6 @@ export default function HomeScreen() {
       }
     });
 
-    // Initial count
     setPendingCount(syncService.getPendingCount());
 
     return () => unsubscribe();
@@ -58,14 +57,9 @@ export default function HomeScreen() {
 
           <View style={styles.statusItem}>
             <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: isSyncing ? '#ffc107' : '#28a745' },
-              ]}
+              style={[styles.statusDot, { backgroundColor: isSyncing ? '#ffc107' : '#28a745' }]}
             />
-            <Text style={styles.statusLabel}>
-              {isSyncing ? 'Sincronizando...' : 'Listo'}
-            </Text>
+            <Text style={styles.statusLabel}>{isSyncing ? 'Sincronizando...' : 'Listo'}</Text>
           </View>
         </View>
       </View>
@@ -88,31 +82,30 @@ export default function HomeScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Acciones Rápidas</Text>
         <View style={styles.actionGrid}>
-          <TouchableOpacity style={styles.actionButton}>
+          <View style={styles.actionButton}>
             <Ionicons name="add-circle" size={32} color="#007AFF" />
             <Text style={styles.actionText}>Crear Registro</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          </View>
+          <View style={styles.actionButton}>
             <Ionicons name="list" size={32} color="#007AFF" />
             <Text style={styles.actionText}>Ver Lista</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          </View>
+          <View style={styles.actionButton}>
             <Ionicons name="sync" size={32} color="#007AFF" />
             <Text style={styles.actionText}>Forzar Sync</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          </View>
+          <View style={styles.actionButton}>
             <Ionicons name="settings" size={32} color="#007AFF" />
             <Text style={styles.actionText}>Config API</Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Información</Text>
         <Text style={styles.infoText}>
-          Esta app guarda los datos localmente usando Realm Database.
-          Cuando hay conexión, sincroniza automáticamente con la API.
-          El health check se ejecuta en /api/health.
+          Esta app guarda los datos localmente usando Realm Database. Cuando hay conexión,
+          sincroniza automáticamente con la API. El health check se ejecuta en /api/health.
         </Text>
       </View>
     </ScrollView>

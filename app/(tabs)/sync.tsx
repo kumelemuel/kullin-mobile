@@ -5,12 +5,20 @@ import { syncService } from '@/services/sync.service';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SyncScreen() {
-  const { pendingCount, lastSync, isSyncing, error, setPendingCount, setLastSync, setSyncing, setError } =
-    useSyncStore();
+  const {
+    pendingCount,
+    lastSync,
+    isSyncing,
+    error,
+    setPendingCount,
+    setLastSync,
+    setSyncing,
+    setError,
+  } = useSyncStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
   React.useEffect(() => {
-    const unsubscribe = syncService.subscribe((status) => {
+    const unsubscribe = syncService.subscribe(status => {
       setPendingCount(status.pendingCount);
       setSyncing(status.isSyncing);
       setError(status.error);
@@ -67,14 +75,9 @@ export default function SyncScreen() {
         <View style={styles.statusRow}>
           <View style={styles.statusItem}>
             <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: isSyncing ? '#ffc107' : '#28a745' },
-              ]}
+              style={[styles.statusDot, { backgroundColor: isSyncing ? '#ffc107' : '#28a745' }]}
             />
-            <Text style={styles.statusText}>
-              {isSyncing ? 'Sincronizando...' : 'Inactivo'}
-            </Text>
+            <Text style={styles.statusText}>{isSyncing ? 'Sincronizando...' : 'Inactivo'}</Text>
           </View>
         </View>
 
@@ -90,7 +93,7 @@ export default function SyncScreen() {
           onPress={handleManualSync}
           disabled={isSyncing}
         >
-          <Ionicons name={isSyncing ? 'spinner' : 'sync'} size={24} color="#fff" />
+          <Ionicons name="sync" size={24} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.syncButtonText}>
             {isSyncing ? 'Sincronizando...' : 'Sincronizar Ahora'}
           </Text>
@@ -115,8 +118,8 @@ export default function SyncScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Cola de Operaciones</Text>
         <Text style={styles.hint}>
-          Las operaciones realizadas sin conexión se guardan aquí y se envían
-          automáticamente cuando hay conexión.
+          Las operaciones realizadas sin conexión se guardan aquí y se envían automáticamente cuando
+          hay conexión.
         </Text>
 
         <View style={styles.queueInfo}>
@@ -137,7 +140,8 @@ export default function SyncScreen() {
         <View style={styles.backoffInfo}>
           <Ionicons name="information-circle" size={18} color="#666" />
           <Text style={styles.backoffText}>
-            Reintentos automáticos con backoff exponencial: 1s → 2s → 4s → 8s → 16s → 30s (máx 3 intentos)
+            Reintentos automáticos con backoff exponencial: 1s → 2s → 4s → 8s → 16s → 30s (máx 3
+            intentos)
           </Text>
         </View>
       </View>

@@ -1,6 +1,6 @@
 import Realm from 'realm';
 import { ApiConfig } from '../models/ApiConfig';
-import { realmWrite, getRealm } from '../realm';
+import { getRealm, writeRealm } from '../realm';
 
 export class ApiConfigRepository {
   private get realm(): Realm {
@@ -13,7 +13,7 @@ export class ApiConfigRepository {
   }
 
   async setConfig(url: string, port: number, token: string): Promise<ApiConfig> {
-    return realmWrite((realm) => {
+    return writeRealm((realm: Realm) => {
       const existing = this.getConfig();
       if (existing) {
         existing.url = url;
@@ -34,7 +34,7 @@ export class ApiConfigRepository {
   }
 
   async clearConfig(): Promise<void> {
-    return realmWrite((realm) => {
+    return writeRealm((realm: Realm) => {
       const configs = realm.objects<ApiConfig>('ApiConfig');
       if (configs.length > 0) {
         realm.delete(configs);

@@ -1,13 +1,13 @@
 import Realm from 'realm';
-import { PendingOperation, PendingOperationSchema } from './models/PendingOperation';
-import { ApiConfig, ApiConfigSchema } from './models/ApiConfig';
+import { PendingOperationSchema } from './models/PendingOperation';
+import { ApiConfigSchema } from './models/ApiConfig';
 
 let realmInstance: Realm | null = null;
 
 export const realmConfig: Realm.Configuration = {
   schema: [PendingOperationSchema, ApiConfigSchema],
   schemaVersion: 1,
-  migration: (oldRealm, newRealm) => {
+  onMigration: () => {
     // Future migrations go here
   },
 };

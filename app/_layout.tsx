@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { Slot } from 'expo-router';
-import { Providers } from '@realm/react';
-import { startNetworkMonitoring, checkHealth } from '@/core/network/networkMonitor';
-import { syncService } from '@/services/sync.service';
+import { RealmProvider } from '@realm/react';
+import { realmConfig } from '@/db/realm';
 import { useApiConfigStore } from '@/features/api-config/store';
 import { ApiConfigScreen } from '@/features/api-config/ApiConfigScreen';
+import { initNetworkMonitor, subscribeNetwork, checkHealth } from '@/core/network/networkMonitor';
+import { syncService } from '@/services/sync.service';
 
 export default function RootLayout() {
   const { loadConfig, isConfigured } = useApiConfigStore();
@@ -12,35 +13,20 @@ export default function RootLayout() {
   useEffect(() => {
     loadConfig();
 
-    // Initialize network monitoring
-    const unsubscribe = startNetworkMonitoring();
-
-    // Listen for online events to trigger sync
-    const handleOnline = async () => {
-      const healthy = await checkHealth();
-      if (healthy) {
-        syncService.triggerSync();
+    initNetworkMonitor();
+    const unsubscribe = subscribeNetwork(async online => {
+      if (online) {
+        const healthy = await checkHealth();
+        if (healthy) {
+          syncService.triggerSync();
+        }
       }
-    };
+    });
 
-    // We can't easily subscribe to network changes here without a hook
-    // The sync trigger will happen via the SyncProvider in the app
-
-    return unsubscribe;
+    return () => unsubscribe();
   }, [loadConfig]);
 
-  // Show config screen if not configured
-  if (!isConfigured) {
-    return (
-      <Providers>
-        <ApiConfigScreen />
-      </Providers>
-    );
-  }
-
   return (
-    <Providers>
-      <Slot />
-    </Providers>
+    <RealmProvider {...realmConfig}>{isConfigured ? <Slot /> : <ApiConfigScreen />}</RealmProvider>
   );
 }
