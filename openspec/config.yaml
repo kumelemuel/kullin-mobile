@@ -1,40 +1,41 @@
 schema: spec-driven
 
 context: |
-  # Kullin Mobile - Offline-First React Native App
+  # Kullin - Offline-First Mobile + Local API Monorepo
 
   ## Tech Stack
-  - Expo SDK 57 (managed workflow)
-  - React Native 0.86, React 19, TypeScript 6 (strict)
-  - Realm Database (v20+) for local persistence
-  - Zustand for UI state management
-  - Axios for API calls with JWT interceptor
-  - Expo Router for navigation
-  - EAS Build for CI/CD
+  - npm workspaces: apps/mobile, apps/api, packages/contracts
+  - Expo SDK 57 (managed), React Native 0.86, React 19, TypeScript 6 (strict)
+  - Realm (mobile) for local persistence; Zustand for UI state
+  - Fastify 5 API with ActualBudgetPort adapter stub
+  - OpenAPI in packages/contracts (openapi-typescript codegen)
+  - Axios + JWT interceptor on mobile; Expo Router; EAS Build
 
   ## Architecture Principles
-  - **Offline-first**: All writes go through Realm + pending operation queue; UI updates optimistically
-  - **Sync engine**: Health check `GET /api/health` → if 200, process queue sequentially with exponential backoff (1s, 2s, 4s... max 30s, max 3 retries)
-  - **No authentication screens**: First run shows config screen (URL, port, token) → validates via health check → persists in Realm + Zustand
-  - **Single source of truth**: Specs drive implementation; code follows spec
+  - Offline-first on mobile: Realm + PendingOperation queue
+  - Mobile talks only to Kullin API; Actual Budget secrets stay on the API
+  - Health: GET /api/health → 200 starts sync processing
+  - Specs drive implementation; OpenAPI is HTTP contract source of truth
 
   ## Key Directories
-  - `src/core/` - API client, network monitor, health check
-  - `src/db/` - Realm config, models, repositories
-  - `src/features/` - Domain features (api-config, sync, + future entities)
-  - `src/services/` - queue.service.ts, sync.service.ts
-  - `app/` - Expo Router pages (tabs: Home, Sync)
+  - apps/mobile/src/core/ - API client, network monitor
+  - apps/mobile/src/db/ - Realm config, models, repositories
+  - apps/mobile/src/features/ - Domain features
+  - apps/mobile/src/services/ - queue.service, sync.service
+  - apps/mobile/app/ - Expo Router pages
+  - apps/api/src/ - Fastify app, modules, actual port/stub
+  - packages/contracts/ - OpenAPI + generated types
 
   ## Quality Gates
-  - `npm run typecheck` (TypeScript strict)
-  - `npm run lint` (ESLint + Prettier)
-  - `npm run test` (Jest + React Native Testing Library)
+  - npm run typecheck (all workspaces)
+  - npm run lint
+  - npm run test (Jest mobile + Vitest API)
+  - npm run generate:api after OpenAPI changes
 
   ## Conventions
   - Conventional Commits (feat:, fix:, chore:)
-  - Path aliases: @/*, @core/*, @db/*, @features/*, @services/*
-  - Realm models use PascalCase, properties camelCase
-  - Queue operations: create/update/delete with entityType + entityId
+  - Mobile path aliases: @/*, @core/*, @db/*, @features/*, @services/*
+  - Realm models PascalCase; queue ops create/update/delete
 
 rules:
   proposal:
@@ -50,6 +51,7 @@ rules:
     - Each task should be verifiable (test or manual check)
     - Mark tasks that require backend changes
   apply:
-    - Follow existing code patterns in src/
+    - Follow existing code patterns in apps/mobile/src/ and apps/api/src/
     - Update living specs in openspec/specs/ after implementation
     - Run typecheck + lint before marking tasks complete
+    - Update packages/contracts OpenAPI before adding API endpoints

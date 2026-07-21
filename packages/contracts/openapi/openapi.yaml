@@ -1,0 +1,39 @@
+openapi: 3.1.0
+info:
+  title: Kullin API
+  version: 1.0.0
+  description: >
+    Local API between the Kullin mobile app and Actual Budget.
+    Active contract for this phase is health-only.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: Returns 200 when the API process is running. No authentication required.
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: ok
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

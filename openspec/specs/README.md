@@ -6,12 +6,14 @@ This directory contains the living specifications that evolve with the codebase.
 
 | Spec | Description | Last Updated |
 |------|-------------|--------------|
-| [architecture.md](architecture.md) | System architecture, data flow, offline-first patterns | 2024-07-17 |
+| [architecture.md](architecture.md) | Monorepo architecture: mobile → Kullin API → Actual | 2026-07-21 |
+| [api-contract.md](api-contract.md) | Health-only active contract; OpenAPI ownership | 2026-07-21 |
 | [data-models.md](data-models.md) | Realm schemas, relationships, migrations | 2024-07-17 |
 | [sync-engine.md](sync-engine.md) | Queue processing, health checks, backoff, retry logic | 2024-07-17 |
 | [api-config.md](api-config.md) | First-run configuration, validation, token management | 2024-07-17 |
 | [offline-behavior.md](offline-behavior.md) | Offline capabilities, queue logic, UI states | 2024-07-17 |
 | [network-layer.md](network-layer.md) | Connectivity monitoring, API client, interceptors | 2024-07-17 |
+| [sync-protocol.md](sync-protocol.md) | Sync queue protocol and retries | 2024-07-17 |
 
 ## Spec Lifecycle
 

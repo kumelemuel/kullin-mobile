@@ -1,115 +1,117 @@
-# Kullin Mobile - Agent Instructions
+# Kullin - Agent Instructions
 
 ## Project Overview
-Offline-first React Native app (Expo managed) for Android/iOS with intermittent API connectivity. Stores data locally via Realm and syncs when `/api/health` returns 200.
 
-## Quick Commands
+npm workspaces monorepo for an offline-first Expo mobile app and a local Fastify API that will integrate with Actual Budget.
 
-```bash
-# Development
-npm start              # Expo dev server
-npm run android        # Android emulator
-npm run ios            # iOS simulator (macOS only)
-
-# Quality
-npm run lint           # ESLint
-npm run typecheck      # TypeScript strict check
-npm run test           # Jest unit tests
-npm run test:watch     # Watch mode
-npm run format         # Prettier write
-npm run format:check   # Prettier check
-
-# Build (EAS)
-npm run eas:build      # Build all platforms
-npm run eas:build:preview  # Preview build (internal dist)
+```
+Mobile (Realm offline-first) → Kullin API (Fastify) → Actual Budget adapter → Actual Budget
 ```
 
-## Architecture
+## Quick Commands (from repo root)
+
+```bash
+# Mobile
+npm run mobile              # Expo dev server
+npm run mobile:android
+npm run mobile:ios
+
+# API
+npm run api                 # Fastify dev (tsx watch)
+npm run api:start
+
+# Contracts
+npm run generate:api        # OpenAPI → TypeScript types
+
+# Quality (all workspaces)
+npm run lint
+npm run typecheck
+npm run test
+npm run format
+npm run format:check
+
+# Mobile-only EAS (from apps/mobile or via -w)
+npm run eas:build -w @kullin/mobile
+```
+
+## Monorepo layout
+
+```
+apps/mobile/          # Expo React Native app (@kullin/mobile)
+apps/api/             # Fastify API (@kullin/api)
+packages/contracts/   # OpenAPI + generated types (@kullin/contracts)
+openspec/             # Specs and changes
+docker-compose.yml    # Local API (+ optional Actual profile)
+```
+
+### Mobile (`apps/mobile/src`)
 
 ```
 src/
-├── core/
-│   ├── api/client.ts          # Axios instance with JWT interceptor
-│   └── network/networkMonitor.ts  # NetInfo + health check
-├── db/
-│   ├── realm.ts               # Realm singleton + config
-│   ├── models/
-│   │   ├── ApiConfig.ts       # { url, port, token } - single record
-│   │   └── PendingOperation.ts # Offline queue items
-│   └── repositories/          # Data access layer
-├── features/
-│   ├── api-config/            # First-run config screen + Zustand store
-│   └── sync/                  # Sync status UI + Zustand store
-├── services/
-│   ├── queue.service.ts       # Enqueue/dequeue pending ops
-│   └── sync.service.ts        # Sequential sync with backoff
-└── components/                # Shared UI components
+├── core/          # API client, network monitor
+├── db/            # Realm models + repositories
+├── features/      # api-config, sync, …
+├── services/      # queue, sync
+└── components/
+```
+
+### API (`apps/api/src`)
+
+```
+src/
+├── app.ts / server.ts
+├── modules/health/
+└── actual/        # ActualBudgetPort + stub adapter
 ```
 
 ## Key Patterns
 
-### Offline-First Write
+### Offline-First Write (mobile)
 ```typescript
-// In any repository create/update/delete:
 await queueService.enqueue({
   type: 'create',
-  endpoint: '/api/orders',
-  payload: newOrder,
-  entityType: 'order',
-  entityId: newOrder.id,
+  endpoint: '/api/...',
+  payload: entity,
+  entityType: '...',
+  entityId: entity.id,
 });
-// UI updates optimistically via Realm reactive queries
 ```
 
 ### Sync Flow
-1. `NetworkMonitor` detects online → `checkHealth()` → `GET /api/health`
-2. If healthy → `SyncService.processQueue()` processes `PendingOperation` sequentially
-3. Exponential backoff: 1s, 2s, 4s... max 30s, max 3 retries
-4. On 401/403 → clear config → redirect to `ApiConfigScreen`
+1. `NetworkMonitor` online → `GET /api/health` on Kullin API
+2. If 200 → process `PendingOperation` queue with backoff
+3. On 401/403 → clear config → `ApiConfigScreen`
 
 ### API Config (First Run)
-- No login. App starts at `ApiConfigScreen` asking for `url`, `port`, `token`
-- Validates via `GET {url}:{port}/api/health` with `Authorization: Bearer {token}`
-- Persisted in Realm (`ApiConfig` model) + Zustand (for `isConfigured` flag)
+- Mobile collects Kullin API `url`, `port`, `token` only
+- Actual Budget secrets live only in API env (see `.env.example`)
+
+### OpenAPI
+- Source of truth: `packages/contracts/openapi/openapi.yaml`
+- Regenerate: `npm run generate:api`
+- Active contract (this phase): `GET /api/health` only
 
 ## Configuration Files
-- `tsconfig.json` — strict, path aliases `@/*`, `@core/*`, `@db/*`, `@features/*`, etc.
-- `.eslintrc.cjs` — Expo + TypeScript + Prettier
-- `.prettierrc` — single quotes, 100 width, trailing commas
-- `jest.config.js` — jest-expo + ts-jest, module aliases
-- `eas.json` — development/preview/production profiles
-- `app.json` — scheme `kullin-mobile`, iOS background fetch, Android permissions
+- Root: `package.json` (workspaces), `.prettierrc`, `docker-compose.yml`, `.env.example`
+- Mobile: `apps/mobile/tsconfig.json`, `eslint.config.js`, `jest.config.js`, `eas.json`, `app.json`
+- API: `apps/api/tsconfig.json`, `vitest.config.ts`
+- Contracts: `packages/contracts/openapi/openapi.yaml`
 
 ## Realm Schema (v1)
-- `ApiConfig` — single record: `url`, `port`, `token`, `updatedAt`
-- `PendingOperation` — queue: `type` (create/update/delete), `endpoint`, `payload` (JSON), `entityType`, `entityId`, `status` (pending/syncing/synced/failed), `retries`, `lastError`
-
-## Testing
-```bash
-npm run test        # Unit tests
-npm run test:watch  # Watch mode
-```
-
-## Common Tasks
-
-### Add New Entity
-1. Create model in `src/db/models/Entity.ts`
-2. Add to `realmConfig.schema` in `src/db/realm.ts`
-3. Create repository in `src/db/repositories/EntityRepository.ts`
-4. Use `queueService.enqueue()` in repository write methods
-
-### Modify Sync Logic
-Edit `src/services/sync.service.ts` — `executeOperation()` handles create/update/delete
-
-### Change Health Endpoint
-Edit `src/core/network/networkMonitor.ts` — `checkHealth()` function
+- `ApiConfig` — `url`, `port`, `token`, `updatedAt`
+- `PendingOperation` — offline queue
 
 ## Environment
 - Node 20+
-- Expo SDK 57
-- React Native 0.86
-- TypeScript 6 strict mode
+- Expo SDK 57 / React Native 0.86
+- TypeScript 6 strict
+- Fastify 5 (API)
+- Vitest (API) / Jest (mobile)
 
 ## Git
 - Branch: `main`
-- Commit style: Conventional Commits (`feat:`, `fix:`, `chore:`)
+- Conventional Commits (`feat:`, `fix:`, `chore:`)
+
+### Tools
+
+When you need to search docs, use `context7` tools.

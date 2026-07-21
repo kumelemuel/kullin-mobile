@@ -37,5 +37,16 @@ yarn-error.*
 *.tsbuildinfo
 
 # generated native folders
+apps/mobile/ios
 /ios
+apps/mobile/android
 /android
+
+# Env secrets
+.env
+.env.*
+!.env.example
+
+# Workspace build outputs
+apps/api/dist/
+packages/contracts/dist/

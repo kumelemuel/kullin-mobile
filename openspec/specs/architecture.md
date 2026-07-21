@@ -3,106 +3,85 @@
 ## High-Level Data Flow
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   UI Layer  │────▶│  Repositories │────▶│   Realm DB  │
-│ (Components)│     │  (CRUD +     │     │  (Offline   │
-│             │     │   Enqueue)  │     │   First)    │
-└─────────────┘     └──────┬──────┘     └──────┬──────┘
-                           │                   │
-                           ▼                   ▼
-                    ┌─────────────┐     ┌─────────────┐
-                    │ QueueService│     │ SyncService │
-                    │ (enqueue,   │     │ (process,   │
-                    │  getPending)│     │  retry,     │
-                    │             │     │  backoff)   │
-                    └──────┬──────┘     └──────┬──────┘
-                           │                   │
-                           ▼                   ▼
-                    ┌─────────────┐     ┌─────────────┐
-                    │  ApiClient  │     │ NetworkMon  │
-                    │ (Axios +    │     │ (NetInfo +  │
-                    │   JWT)      │     │  Health)    │
-                    └──────┬──────┘     └──────┬──────┘
-                           │                   │
-                           ▼                   ▼
-                    ┌─────────────┐     ┌─────────────┐
-                    │   REST API  │     │  Online/    │
-                    │  (External) │     │  Offline    │
-                    └─────────────┘     └─────────────┘
+┌──────────────── apps/mobile ────────────────┐
+│  UI → Repositories → Realm (offline-first)  │
+│         │                    │              │
+│         ▼                    ▼              │
+│   QueueService          SyncService         │
+│         │                    │              │
+│         └────────┬───────────┘              │
+│                  ▼                          │
+│         ApiClient + NetworkMonitor          │
+└──────────────────┬──────────────────────────┘
+                   │ HTTPS (LAN/VPN)
+                   ▼
+┌──────────────── apps/api ───────────────────┐
+│  Fastify modules → ActualBudgetPort         │
+│                         │                   │
+│                         ▼                   │
+│              ActualBudgetAdapter (stub→SDK) │
+└──────────────────┬──────────────────────────┘
+                   ▼
+            Actual Budget instance
 ```
 
-## Layer Responsibilities
+Mobile MUST NOT talk to Actual Budget directly.
+
+## Monorepo Layer Responsibilities
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
-| **UI** | `app/(tabs)/*.tsx` | Screens, navigation, user interaction |
-| **Features** | `src/features/{feature}/` | Domain logic, Zustand stores, feature components |
-| **Core** | `src/core/` | Cross-cutting: API client, network, auth |
-| **DB** | `src/db/` | Realm config, models, repositories |
-| **Services** | `src/services/` | Business logic: queue, sync |
-| **Shared** | `src/components/`, `src/hooks/`, `src/utils/` | Reusable utilities |
+| **UI** | `apps/mobile/app/(tabs)/*.tsx` | Screens, navigation |
+| **Features** | `apps/mobile/src/features/{feature}/` | Domain logic, Zustand |
+| **Core** | `apps/mobile/src/core/` | API client, network |
+| **DB** | `apps/mobile/src/db/` | Realm models, repositories |
+| **Services** | `apps/mobile/src/services/` | Queue, sync |
+| **API** | `apps/api/src/` | HTTP, modules, Actual port |
+| **Contracts** | `packages/contracts/` | OpenAPI + generated types |
 
 ## Key Patterns
 
 ### Offline-First Write
 ```typescript
-// In any Repository create/update/delete:
 await queueService.enqueue({
   type: 'create',
-  endpoint: '/api/orders',
-  payload: newOrder,
-  entityType: 'order',
-  entityId: newOrder.id,
+  endpoint: '/api/...',
+  payload: entity,
+  entityType: '...',
+  entityId: entity.id,
 });
-// Realm write happens optimistically
-// UI updates reactively via Realm listeners
-```
-
-### Reactive Queries
-```typescript
-// Components use useQuery/useObject from @realm/react
-const orders = useQuery(Order); // Auto-updates on Realm changes
 ```
 
 ### Config-Driven API
-- No hardcoded base URL
-- `ApiConfigRepository` provides `url:port` + token
-- `ApiClient` reads config on each request (auto-refresh)
+- Mobile configures Kullin API `url` + `port` + `token` only
+- Actual credentials are API env vars only
+
+### Actual Budget Boundary
+- Application code depends on `ActualBudgetPort`
+- Only the adapter may use `@actual-app/api` (stub until wired)
 
 ## State Management
 
 | Store | Path | Scope |
 |-------|------|-------|
-| `useApiConfigStore` | `src/features/api-config/store.ts` | Global config + `isConfigured` |
-| `useSyncStore` | `src/features/sync/store.ts` | Sync status (pendingCount, lastSync, isSyncing) |
-| Realm | `@realm/react` | All domain entities + pending queue |
+| `useApiConfigStore` | `apps/mobile/src/features/api-config/store.ts` | Config + `isConfigured` |
+| `useSyncStore` | `apps/mobile/src/features/sync/store.ts` | Sync status |
+| Realm | `@realm/react` | Domain entities + queue |
 
 ## Navigation
-- **Expo Router** (file-based)
-- Tabs: `index` (Home) + `sync` (Sync status)
-- First run: `ApiConfigScreen` (conditional in `_layout.tsx`)
-
-## Background Tasks
-- `expo-task-manager` + `expo-background-fetch`
-- Task `background-sync` registered in `_layout.tsx`
-- Minimum interval: 15 minutes (iOS limitation)
+- Expo Router in `apps/mobile/app/`
+- Tabs: Home + Sync; first run: ApiConfigScreen
 
 ## Security
-- Token stored in Realm (not SecureStore - app manages own config)
-- 401/403 → auto-clear config → redirect to config screen
-- No user auth - config is the credential
+- Mobile token in Realm (SecureStore migration is a follow-up)
+- 401/403 → clear config → config screen
+- Actual password never leaves the API host
 
-## TypeScript Conventions
-- Strict mode enabled
-- Path aliases: `@/*`, `@core/*`, `@db/*`, `@features/*`, `@services/*`, `@hooks/*`, `@utils/*`
-- No `any` (warn), no unused vars (error)
-
-## Testing Strategy
-| Type | Tool | Target |
-|------|------|--------|
-| Unit | Vitest + @testing-library/react-native | Services, hooks, utils |
-| Integration | Detox | Sync flows, offline→online |
-| Contract | Pact / openapi-validator | API request/response |
+## Testing
+| Package | Tool |
+|---------|------|
+| `@kullin/mobile` | Jest + Testing Library |
+| `@kullin/api` | Vitest + Fastify `inject` |
 
 ---
 

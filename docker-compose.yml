@@ -1,0 +1,34 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      KULLIN_API_TOKEN: ${KULLIN_API_TOKEN:-}
+      ACTUAL_SERVER_URL: ${ACTUAL_SERVER_URL:-http://host.docker.internal:5006}
+      ACTUAL_PASSWORD: ${ACTUAL_PASSWORD:-}
+      ACTUAL_BUDGET_ID: ${ACTUAL_BUDGET_ID:-}
+      ACTUAL_DATA_DIR: ${ACTUAL_DATA_DIR:-/data/actual-cache}
+    volumes:
+      - api-data:/data/actual-cache
+    restart: unless-stopped
+
+  # Optional: `docker compose --profile actual up`
+  # Pin/replace the image tag to match your local Actual Budget version.
+  actual:
+    image: actualbudget/actual-server:latest
+    ports:
+      - "${ACTUAL_PORT:-5006}:5006"
+    volumes:
+      - actual-data:/data
+    restart: unless-stopped
+    profiles:
+      - actual
+
+volumes:
+  api-data:
+  actual-data:
